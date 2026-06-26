@@ -17,12 +17,15 @@
    * ========================================================== */
   const CONFIG = {
     fade: {
-      // フェードインの対象セレクタ。
-      // STUDIOで対象要素に class「js-fade」を付けると確実。
-      // 何も付けなくても、下の autoSelector に該当する大きめのブロックは自動対象になります。
+      // 明示指定したい要素のセレクタ。
+      // STUDIOで対象要素に class「js-fade」を付ければ確実に対象になります。
       selector: ".js-fade, [data-fade]",
-      autoSelector: "section, .auto-fade", // 自動対象（不要なら空文字に）
-      threshold: 0.15, // 何割見えたら発火するか
+      // STUDIOのセクションを自動検出してフェード対象にする（推奨: true）。
+      // STUDIOは全要素が .sd クラスのdiv構造なので、ページの主要ブロックを
+      // 高さヒューリスティックで自動抽出します。
+      autoStudio: true,
+      autoMinHeight: 120, // 自動対象とみなす最小の高さ(px)
+      threshold: 0.12, // 何割見えたら発火するか
       distance: 28, // 立ち上がりの移動量(px)
       duration: 700, // アニメ時間(ms)
       once: true, // 一度きり（falseで再入時に再生）
@@ -46,16 +49,45 @@
   /* ============================================================
    * 1) スクロールでフェードイン
    * ========================================================== */
+  // STUDIOの「セクション」を自動検出する。
+  // 仕組み: メインキャンバスから下って、"高さのある子を複数持つ階層" を探し、
+  // その直下の子（＝各セクション）を対象にする。
+  function detectStudioSections(minH) {
+    const start =
+      document.querySelector("#__nuxt .StudioCanvas") ||
+      document.querySelector("#__nuxt .render-canvas") ||
+      document.querySelector("#__nuxt");
+    if (!start) return [];
+
+    const h = (el) => el.getBoundingClientRect().height;
+    let node = start;
+    for (let i = 0; i < 12; i++) {
+      const nodeH = h(node) || 1;
+      const kids = [...node.children].filter((k) => h(k) > minH);
+      if (kids.length === 0) return [];
+      const tallest = kids.reduce((a, b) => (h(a) >= h(b) ? a : b));
+      // 同格のブロックが2つ以上 かつ 単独でほぼ全体(>80%)を占める子がない
+      // ＝ ここが「セクションが並ぶ階層」。それ以外はラッパーなので降りる。
+      if (kids.length >= 2 && h(tallest) < nodeH * 0.8) return kids;
+      node = tallest;
+    }
+    return [];
+  }
+
+  function collectFadeTargets(c) {
+    const targets = new Set();
+    document.querySelectorAll(c.selector).forEach((el) => targets.add(el));
+    if (c.autoStudio) {
+      detectStudioSections(c.autoMinHeight).forEach((el) => targets.add(el));
+    }
+    return [...targets];
+  }
+
   function initFadeIn() {
     const c = CONFIG.fade;
 
-    // 対象を集める（重複は Set で排除）
-    const targets = new Set();
-    document.querySelectorAll(c.selector).forEach((el) => targets.add(el));
-    if (c.autoSelector) {
-      document.querySelectorAll(c.autoSelector).forEach((el) => targets.add(el));
-    }
-    if (targets.size === 0) return;
+    const targets = collectFadeTargets(c);
+    if (targets.length === 0) return;
 
     // reduced-motion の人にはアニメ無しで即表示
     if (prefersReducedMotion) {
@@ -247,10 +279,51 @@
   }
 
   /* ============================================================
+   * 【DEBUG】読み込み確認用ブロック（確認できたらこのブロックごと削除）
+   * - 背景を赤くする
+   * - 右下に小さくデバッグ表示を出す
+   * ========================================================== */
+  function initDebug() {
+    // 背景を赤に
+    document.documentElement.style.background = "#e53935";
+    document.body.style.background = "transparent";
+
+    // 右下のデバッグバッジ
+    const badge = document.createElement("div");
+    badge.textContent = "main.js OK / " + new Date().toLocaleTimeString();
+    Object.assign(badge.style, {
+      position: "fixed",
+      right: "8px",
+      bottom: "8px",
+      zIndex: "999999",
+      padding: "4px 8px",
+      font: "12px/1.4 monospace",
+      color: "#fff",
+      background: "rgba(0,0,0,0.75)",
+      borderRadius: "4px",
+      pointerEvents: "none",
+      whiteSpace: "nowrap",
+    });
+    document.body.appendChild(badge);
+  }
+
+  /* ============================================================
    * 起動
    * ========================================================== */
+  // STUDIO(Nuxt)はハイドレーション後にコンテンツを描画するため、
+  // フェード対象が現れるまで少し待ってから初期化する。
+  function startFadeWhenReady(tries = 0) {
+    const found = collectFadeTargets(CONFIG.fade).length > 0;
+    if (found || tries >= 20) {
+      initFadeIn(); // 見つかれば初期化（見つからなければ諦める）
+      return;
+    }
+    setTimeout(() => startFadeWhenReady(tries + 1), 200); // 最大約4秒待つ
+  }
+
   function start() {
-    initFadeIn();
+    initDebug(); // 【DEBUG】読み込み確認（確認後この行も削除）
+    startFadeWhenReady();
     initPhysics();
   }
 
