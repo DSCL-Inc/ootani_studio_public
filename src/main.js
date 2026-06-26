@@ -40,14 +40,14 @@
     physics: {
       enabled: true,
       maxBodies: 8, // 同時に存在する最大数（多いほど重い）
-      spawnIntervalMs: 1400, // 生成間隔
+      spawnIntervalMs: 2400, // 生成間隔（約1秒のばして頻度を下げた）
       // 図形の塗りに使う画像（このファイルと同じ場所に置く）。
       // 指定があれば各7角形をこの石テクスチャで塗る。空配列にすると下のcolorsで塗る。
       textures: ["stone_blue.png", "stone_green.png", "stone_red.png"],
       // textures が空のときに使う単色（フォールバック / キャンプらしいアースカラー）
       colors: ["#8d6e63", "#a1887f", "#6d8c5a", "#c9a86a", "#5d4037"],
       sizeRange: [48, 120], // 半径(px) ※元の300%サイズ
-      opacity: 0.9, // 石の質感をしっかり見せる
+      opacity: 0.2, // かなり淡く（薄さ20%）
       zIndex: 0, // コンテンツより奥に
     },
   };
