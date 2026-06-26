@@ -280,14 +280,9 @@
 
   /* ============================================================
    * 【DEBUG】読み込み確認用ブロック（確認できたらこのブロックごと削除）
-   * - 背景を赤くする
    * - 右下に小さくデバッグ表示を出す
    * ========================================================== */
   function initDebug() {
-    // 背景を赤に
-    document.documentElement.style.background = "#e53935";
-    document.body.style.background = "transparent";
-
     // 右下のデバッグバッジ
     const badge = document.createElement("div");
     badge.textContent = "main.js OK / " + new Date().toLocaleTimeString();
