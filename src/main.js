@@ -318,30 +318,6 @@
   }
 
   /* ============================================================
-   * 【DEBUG】読み込み確認用ブロック（確認できたらこのブロックごと削除）
-   * - 右下に小さくデバッグ表示を出す
-   * ========================================================== */
-  function initDebug() {
-    // 右下のデバッグバッジ
-    const badge = document.createElement("div");
-    badge.textContent = "main.js OK / " + new Date().toLocaleTimeString();
-    Object.assign(badge.style, {
-      position: "fixed",
-      right: "8px",
-      bottom: "8px",
-      zIndex: "999999",
-      padding: "4px 8px",
-      font: "12px/1.4 monospace",
-      color: "#fff",
-      background: "rgba(0,0,0,0.75)",
-      borderRadius: "4px",
-      pointerEvents: "none",
-      whiteSpace: "nowrap",
-    });
-    document.body.appendChild(badge);
-  }
-
-  /* ============================================================
    * 起動
    * ========================================================== */
   // STUDIO(Nuxt)はハイドレーション後にコンテンツを描画するため、
@@ -356,7 +332,6 @@
   }
 
   function start() {
-    initDebug(); // 【DEBUG】読み込み確認（確認後この行も削除）
     startFadeWhenReady();
     initPhysics();
   }
