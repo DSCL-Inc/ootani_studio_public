@@ -12,6 +12,13 @@
 (() => {
   "use strict";
 
+  // このスクリプト自身のURLから画像の置き場所(同じディレクトリ)を推定。
+  // 公開サイト=CDN、ローカル=/js/ のどちらでも正しく解決される。
+  const SELF_SRC = (document.currentScript && document.currentScript.src) || "";
+  const ASSET_BASE =
+    SELF_SRC.replace(/[^/]+$/, "") ||
+    "https://cdn.jsdelivr.net/gh/DSCL-Inc/ootani_studio_public@main/src/";
+
   /* ============================================================
    * 設定（ここだけ触れば調整できます）
    * ========================================================== */
@@ -34,11 +41,14 @@
       enabled: true,
       maxBodies: 8, // 同時に存在する最大数（多いほど重い）
       spawnIntervalMs: 1400, // 生成間隔
-      // オブジェクトの色（キャンプらしいアースカラー）
+      // 図形の塗りに使う画像（このファイルと同じ場所に置く）。
+      // 指定があれば各7角形をこの石テクスチャで塗る。空配列にすると下のcolorsで塗る。
+      textures: ["stone_blue.png", "stone_green.png", "stone_red.png"],
+      // textures が空のときに使う単色（フォールバック / キャンプらしいアースカラー）
       colors: ["#8d6e63", "#a1887f", "#6d8c5a", "#c9a86a", "#5d4037"],
       sizeRange: [48, 120], // 半径(px) ※元の300%サイズ
       opacity: 0.5, // 背景なので控えめに
-      zIndex: -2, // コンテンツより奥に
+      zIndex: 0, // コンテンツより奥に
     },
   };
 
@@ -157,8 +167,15 @@
       return;
     }
 
-    const { Engine, Render, Runner, World, Bodies, Body, Composite } =
+    const { Engine, Render, Runner, World, Bodies, Body, Composite, Events } =
       window.Matter;
+
+    // 図形の塗り用テクスチャを先読み（読み込めたものだけ使う）
+    const texImages = (p.textures || []).map((name) => {
+      const img = new Image();
+      img.src = ASSET_BASE + name;
+      return img;
+    });
 
     // 背景用キャンバスを生成（クリックを邪魔しないよう pointer-events:none）
     const wrap = document.createElement("div");
@@ -193,6 +210,31 @@
     const runner = Runner.create();
     Runner.run(runner, engine);
 
+    // 各7角形をその輪郭でクリップして石テクスチャを描く。
+    // （Matterの単色塗りの上から不透明画像で覆う＝画像が無い時は色がフォールバック）
+    if (texImages.length) {
+      Events.on(render, "afterRender", () => {
+        const ctx = render.context;
+        Composite.allBodies(engine.world).forEach((b) => {
+          const img = b.texImg;
+          if (!img || !img.complete || !img.naturalWidth) return;
+          const v = b.vertices;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(v[0].x, v[0].y);
+          for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
+          ctx.closePath();
+          ctx.clip();
+          // 図形に合わせて画像を回転・拡大（外接円を覆うサイズ）
+          ctx.translate(b.position.x, b.position.y);
+          ctx.rotate(b.angle);
+          const s = (b.texR || 40) * 2.1;
+          ctx.drawImage(img, -s / 2, -s / 2, s, s);
+          ctx.restore();
+        });
+      });
+    }
+
     // 床と左右の壁（見えない）
     const wallOpts = { isStatic: true, render: { visible: false } };
     let ground = Bodies.rectangle(W / 2, H + 30, W * 2, 60, wallOpts);
@@ -225,6 +267,9 @@
         render: { fillStyle: color },
       };
       const body = Bodies.polygon(x, -r, 7, r, opts);
+      // テクスチャと外接半径を覚えさせる（afterRenderで使用）
+      if (texImages.length) body.texImg = pick(texImages);
+      body.texR = r;
       // 初速で横に転がす
       Body.setAngularVelocity(body, rand(-0.2, 0.2));
       Body.setVelocity(body, { x: rand(-2, 2), y: 0 });
