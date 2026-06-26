@@ -32,13 +32,13 @@
     },
     physics: {
       enabled: true,
-      maxBodies: 18, // 同時に存在する最大数（多いほど重い）
+      maxBodies: 8, // 同時に存在する最大数（多いほど重い）
       spawnIntervalMs: 1400, // 生成間隔
       // オブジェクトの色（キャンプらしいアースカラー）
       colors: ["#8d6e63", "#a1887f", "#6d8c5a", "#c9a86a", "#5d4037"],
-      sizeRange: [16, 40], // 半径(px)
+      sizeRange: [48, 120], // 半径(px) ※元の300%サイズ
       opacity: 0.5, // 背景なので控えめに
-      zIndex: 0, // コンテンツより奥に。必要なら -1
+      zIndex: -2, // コンテンツより奥に
     },
   };
 
@@ -217,20 +217,14 @@
       const x = rand(r, W - r);
       const color = pick(p.colors);
 
-      // 形をランダムに（円＝転がる / ポリゴン）
-      let body;
-      const shape = Math.random();
+      // 7角形（ランダムな向き・大きさで生成）
       const opts = {
         restitution: 0.4, // 弾み
         friction: 0.05,
+        angle: rand(0, Math.PI * 2), // 向きをランダムに
         render: { fillStyle: color },
       };
-      if (shape < 0.6) {
-        body = Bodies.circle(x, -r, r, opts); // 円：よく転がる
-      } else {
-        const sides = Math.floor(rand(3, 6));
-        body = Bodies.polygon(x, -r, sides, r, opts);
-      }
+      const body = Bodies.polygon(x, -r, 7, r, opts);
       // 初速で横に転がす
       Body.setAngularVelocity(body, rand(-0.2, 0.2));
       Body.setVelocity(body, { x: rand(-2, 2), y: 0 });
